@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arreglo de Predicación Pública - Exhibidores</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a5276">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Exhibidores">
+    <meta name="description" content="Aplicación para organizar el Arreglo de Predicación Pública Exhibidores">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a5276' width='100' height='100' rx='15'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'>EP</text></svg>">
+    
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Arreglo de Predicación Pública</h1>
+            <h2>Exhibidores</h2>
+        </header>
+
+        <section class="config-section">
+            <div class="config-row">
+                <div class="config-group">
+                    <label for="location">Ubicación:</label>
+                    <select id="location">
+                        <option value="av-vollmer">Av. Vollmer (Lunes a Viernes)</option>
+                        <option value="eloy-alfaro">Eloy Alfaro (Lunes a Domingo)</option>
+                    </select>
+                </div>
+                <div class="config-group">
+                    <label for="week-start">Semana que inicia:</label>
+                    <input type="date" id="week-start">
+                </div>
+            </div>
+            <button id="generate-btn" class="btn-primary">Generar Arreglo</button>
+        </section>
+
+        <section id="arrangement-section" class="hidden">
+            <div class="arrangement-header">
+                <h3 id="arrangement-title"></h3>
+                <div class="btn-group">
+                    <button id="preview-btn" class="btn-secondary">Vista Previa</button>
+                    <button id="save-btn" class="btn-secondary">Guardar</button>
+                    <button id="pdf-btn" class="btn-primary">Descargar PDF</button>
+                </div>
+            </div>
+            <div id="arrangement-grid" class="arrangement-grid"></div>
+        </section>
+
+        <section class="participants-section">
+            <h3>Gestión de Participantes</h3>
+            <div class="participants-form">
+                <div class="participants-input-row">
+                    <input type="text" id="participant-name" placeholder="Nombre del participante" maxlength="50">
+                    <button id="add-participant-btn" class="btn-primary">Agregar</button>
+                    <button id="cancel-edit-btn" class="btn-secondary hidden">Cancelar</button>
+                </div>
+                <p class="hint">Puedes agregar participantes aquí y luego seleccionarlos rápidamente al llenar el arreglo</p>
+            </div>
+            <div id="participants-list" class="participants-list">
+                <p class="empty-message">No hay participantes registrados</p>
+            </div>
+            <div id="participant-editing" class="participant-editing hidden">
+                <span>Editando: <strong id="editing-name"></strong></span>
+            </div>
+        </section>
+
+        <section class="saved-section">
+            <h3>Arreglos Guardados</h3>
+            <div id="saved-list" class="saved-list">
+                <p class="empty-message">No hay arreglos guardados</p>
+            </div>
+        </section>
+
+        <section class="backup-section">
+            <h3>Respaldo y Compartir</h3>
+            <p class="backup-description">Guarda tus participantes y arreglos para compartirlos con otro dispositivo</p>
+            <div class="backup-buttons">
+                <button id="export-whatsapp-btn" class="btn-whatsapp">
+                    <span class="btn-icon">📱</span> Enviar por WhatsApp
+                </button>
+                <button id="export-file-btn" class="btn-secondary">
+                    <span class="btn-icon">💾</span> Guardar Archivo
+                </button>
+                <button id="import-file-btn" class="btn-secondary">
+                    <span class="btn-icon">📂</span> Cargar Archivo
+                </button>
+                <input type="file" id="import-file-input" accept=".json" class="hidden">
+            </div>
+        </section>
+
+        <section class="install-section">
+            <h3>Instalar App</h3>
+            <p class="install-description">Instala esta aplicación en tu dispositivo para acceso rápido</p>
+            <button id="install-btn" class="btn-install hidden">
+                <span class="btn-icon">📲</span> Instalar Aplicación
+            </button>
+            <p id="install-manual" class="install-manual">
+                Para instalar: Toca el menú del navegador y selecciona "Agregar a pantalla de inicio"
+            </p>
+        </section>
+    </div>
+
+    <!-- Modal de Vista Previa -->
+    <div id="preview-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Vista Previa del Arreglo</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div id="preview-content" class="preview-content"></div>
+            <div class="modal-footer">
+                <button id="confirm-pdf-btn" class="btn-primary">Confirmar e Imprimir PDF</button>
+                <button class="close-modal btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('SW registrado:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Error al registrar SW:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+        const installManual = document.getElementById('install-manual');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+            installManual.classList.add('hidden');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Resultado instalación:', outcome);
+                deferredPrompt = null;
+                installBtn.classList.add('hidden');
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installBtn.classList.add('hidden');
+            console.log('App instalada');
+        });
+    </script>
+</body>
+</html>
