@@ -62,9 +62,14 @@
                     <button id="add-participant-btn" class="btn-primary">Agregar</button>
                     <button id="cancel-edit-btn" class="btn-secondary hidden">Cancelar</button>
                 </div>
-                <p class="hint">Puedes agregar participantes aquí y luego seleccionarlos rápidamente al llenar el arreglo</p>
+                <p class="hint">Agrega participantes para usar autocompletado en los arreglos</p>
             </div>
-            <div id="participants-list" class="participants-list">
+            <div class="participants-toggle">
+                <button id="toggle-list-btn" class="btn-link">
+                    <span id="toggle-icon">▶</span> Ver lista de participantes (<span id="participant-count">0</span>)
+                </button>
+            </div>
+            <div id="participants-list" class="participants-list hidden">
                 <p class="empty-message">No hay participantes registrados</p>
             </div>
             <div id="participant-editing" class="participant-editing hidden">

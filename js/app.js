@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const participantsList = document.getElementById('participants-list');
     const participantEditing = document.getElementById('participant-editing');
     const editingNameSpan = document.getElementById('editing-name');
+    const toggleListBtn = document.getElementById('toggle-list-btn');
+    const toggleIcon = document.getElementById('toggle-icon');
+    const participantCountSpan = document.getElementById('participant-count');
 
     const timeSlots = ['8:00 - 10:00', '10:00 - 12:00', '12:00 - 14:00', '14:00 - 16:00'];
     const daysVollmer = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
@@ -71,6 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderParticipants() {
+        participantCountSpan.textContent = participants.length;
+
         if (participants.length === 0) {
             participantsList.innerHTML = '<p class="empty-message">No hay participantes registrados</p>';
             return;
@@ -832,4 +837,18 @@ document.addEventListener('DOMContentLoaded', function() {
     exportFileBtn.addEventListener('click', exportToFile);
     importFileBtn.addEventListener('click', importFromFile);
     importFileInput.addEventListener('change', handleFileImport);
+
+    // Toggle participants list
+    toggleListBtn.addEventListener('click', function() {
+        const isHidden = participantsList.classList.contains('hidden');
+        if (isHidden) {
+            participantsList.classList.remove('hidden');
+            toggleIcon.textContent = '▼';
+            toggleIcon.classList.add('active');
+        } else {
+            participantsList.classList.add('hidden');
+            toggleIcon.textContent = '▶';
+            toggleIcon.classList.remove('active');
+        }
+    });
 });
