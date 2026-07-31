@@ -253,7 +253,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function parseTimeSlot(slot) {
         const parts = slot.split(' - ');
-        return { start: parts[0] + ':00', end: parts[1] + ':00' };
+        return { start: parts[0], end: parts[1] };
+    }
+
+    function timeToMinutes(timeStr) {
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
     }
 
     function renderSlotsList() {
@@ -322,9 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         timeSlots.push(slotText);
         timeSlots.sort((a, b) => {
-            const aStart = parseTimeSlot(a).start;
-            const bStart = parseTimeSlot(b).start;
-            return aStart.localeCompare(bStart);
+            return timeToMinutes(parseTimeSlot(a).start) - timeToMinutes(parseTimeSlot(b).start);
         });
 
         saveTimeSlots();
@@ -337,8 +340,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const parsed = parseTimeSlot(slot);
 
         editingSlotId = index;
-        slotStartInput.value = parsed.start.substring(0, 5);
-        slotEndInput.value = parsed.end.substring(0, 5);
+        slotStartInput.value = parsed.start;
+        slotEndInput.value = parsed.end;
         editingSlotNameSpan.textContent = slot;
         slotEditingDiv.classList.remove('hidden');
         cancelSlotBtn.classList.remove('hidden');
@@ -1126,9 +1129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (!merged.includes(newS)) merged.push(newS);
                         });
                         merged.sort((a, b) => {
-                            const aStart = parseTimeSlot(a).start;
-                            const bStart = parseTimeSlot(b).start;
-                            return aStart.localeCompare(bStart);
+                            return timeToMinutes(parseTimeSlot(a).start) - timeToMinutes(parseTimeSlot(b).start);
                         });
                         localStorage.setItem('timeSlots', JSON.stringify(merged));
                         loadTimeSlots();
