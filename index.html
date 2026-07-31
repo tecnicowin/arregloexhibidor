@@ -25,14 +25,42 @@
             <h2>Exhibidores</h2>
         </header>
 
+        <section class="locations-manage-section">
+            <h3>Gestionar Ubicaciones</h3>
+            <div class="location-form">
+                <div class="location-form-row">
+                    <input type="text" id="location-name" placeholder="Nombre de la ubicación" maxlength="50">
+                </div>
+                <div class="location-days-row">
+                    <label>Días de operación:</label>
+                    <div class="location-days-checkboxes">
+                        <label><input type="checkbox" class="location-day-checkbox" value="Lunes"> Lun</label>
+                        <label><input type="checkbox" class="location-day-checkbox" value="Martes"> Mar</label>
+                        <label><input type="checkbox" class="location-day-checkbox" value="Miércoles"> Mié</label>
+                        <label><input type="checkbox" class="location-day-checkbox" value="Jueves"> Jue</label>
+                        <label><input type="checkbox" class="location-day-checkbox" value="Viernes"> Vie</label>
+                        <label><input type="checkbox" class="location-day-checkbox" value="Sábado"> Sáb</label>
+                        <label><input type="checkbox" class="location-day-checkbox" value="Domingo"> Dom</label>
+                    </div>
+                </div>
+                <div class="location-form-actions">
+                    <button id="add-location-btn" class="btn-primary">Agregar</button>
+                    <button id="cancel-location-btn" class="btn-secondary hidden">Cancelar</button>
+                </div>
+                <div id="location-editing" class="location-editing hidden">
+                    <span>Editando: <strong id="editing-location-name"></strong></span>
+                </div>
+            </div>
+            <div id="locations-list" class="locations-list">
+                <p class="empty-message">No hay ubicaciones</p>
+            </div>
+        </section>
+
         <section class="config-section">
             <div class="config-row">
                 <div class="config-group">
                     <label for="location">Ubicación:</label>
-                    <select id="location">
-                        <option value="av-vollmer">Av. Vollmer (Lunes a Viernes)</option>
-                        <option value="eloy-alfaro">Eloy Alfaro (Lunes a Domingo)</option>
-                    </select>
+                    <select id="location"></select>
                 </div>
                 <div class="config-group">
                     <label for="week-start">Semana que inicia:</label>
@@ -86,7 +114,7 @@
 
         <section class="backup-section">
             <h3>Respaldo y Compartir</h3>
-            <p class="backup-description">Guarda tus participantes y arreglos para compartirlos con otro dispositivo</p>
+            <p class="backup-description">Guarda tus participantes, ubicaciones y arreglos para compartirlos con otro dispositivo</p>
             <div class="backup-buttons">
                 <button id="export-whatsapp-btn" class="btn-whatsapp">
                     <span class="btn-icon">📱</span> Enviar por WhatsApp
@@ -145,7 +173,6 @@
             });
         }
 
-        // PWA Install Prompt
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
         const installManual = document.getElementById('install-manual');

@@ -308,6 +308,129 @@ header h2 {
     color: #856404;
 }
 
+/* Location Management Styles */
+.locations-manage-section {
+    margin-bottom: 25px;
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.locations-manage-section h3 {
+    margin-bottom: 15px;
+    color: #1a5276;
+}
+
+.location-form {
+    margin-bottom: 15px;
+}
+
+.location-form-row {
+    margin-bottom: 10px;
+}
+
+.location-form-row input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.location-form-row input:focus {
+    outline: none;
+    border-color: #2980b9;
+}
+
+.location-days-row {
+    margin-bottom: 15px;
+}
+
+.location-days-row label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.location-days-checkboxes {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.location-days-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: normal;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.location-days-checkboxes input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.location-form-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.location-editing {
+    margin-top: 10px;
+    padding: 10px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    color: #856404;
+}
+
+.locations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.location-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #2980b9;
+}
+
+.location-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.location-item-name {
+    font-weight: 600;
+    color: #1a5276;
+}
+
+.location-item-days {
+    font-size: 0.8rem;
+    color: #777;
+}
+
+.location-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+
 .participants-toggle {
     margin-top: 15px;
     padding-top: 10px;
@@ -638,6 +761,20 @@ header h2 {
 
     .participants-list {
         justify-content: center;
+    }
+
+    .location-days-checkboxes {
+        gap: 8px;
+    }
+
+    .location-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .location-item-actions {
+        justify-content: flex-end;
     }
 
     .backup-buttons {

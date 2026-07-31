@@ -23,13 +23,218 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleIcon = document.getElementById('toggle-icon');
     const participantCountSpan = document.getElementById('participant-count');
 
+    const locationNameInput = document.getElementById('location-name');
+    const locationDaysCheckboxes = document.querySelectorAll('.location-day-checkbox');
+    const addLocationBtn = document.getElementById('add-location-btn');
+    const cancelLocationBtn = document.getElementById('cancel-location-btn');
+    const locationsList = document.getElementById('locations-list');
+    const locationEditingDiv = document.getElementById('location-editing');
+    const editingLocationNameSpan = document.getElementById('editing-location-name');
+
+    const allDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const timeSlots = ['8:00 - 10:00', '10:00 - 12:00', '12:00 - 14:00', '14:00 - 16:00'];
-    const daysVollmer = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-    const daysAlfaro = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+    const DEFAULT_LOCATIONS = {
+        'av-vollmer': { name: 'Av. Vollmer', days: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'] },
+        'paseo-marquez': { name: 'Paseo Marquez del Toro', days: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] }
+    };
 
     let currentArrangement = null;
     let editingParticipantId = null;
+    let editingLocationId = null;
     let participants = [];
+    let locations = {};
+
+    function loadLocations() {
+        const saved = localStorage.getItem('locations');
+        if (saved) {
+            locations = JSON.parse(saved);
+        } else {
+            locations = JSON.parse(JSON.stringify(DEFAULT_LOCATIONS));
+            saveLocations();
+        }
+    }
+
+    function saveLocations() {
+        localStorage.setItem('locations', JSON.stringify(locations));
+    }
+
+    function renderLocationSelect() {
+        const currentValue = locationSelect.value;
+        locationSelect.innerHTML = '';
+        Object.keys(locations).forEach(key => {
+            const loc = locations[key];
+            const option = document.createElement('option');
+            option.value = key;
+            const dayRange = loc.days.length === 7 ? 'Lunes a Domingo' :
+                             loc.days.length === 5 ? 'Lunes a Viernes' :
+                             loc.days.join(', ');
+            option.textContent = `${loc.name} (${dayRange})`;
+            locationSelect.appendChild(option);
+        });
+        if (locations[currentValue]) {
+            locationSelect.value = currentValue;
+        }
+    }
+
+    function renderLocationsList() {
+        const keys = Object.keys(locations);
+        if (keys.length === 0) {
+            locationsList.innerHTML = '<p class="empty-message">No hay ubicaciones configuradas</p>';
+            return;
+        }
+
+        locationsList.innerHTML = '';
+        keys.forEach(key => {
+            const loc = locations[key];
+            const item = document.createElement('div');
+            item.className = 'location-item';
+            const dayRange = loc.days.length === 7 ? 'Lun-Dom' :
+                             loc.days.length === 5 ? 'Lun-Vie' :
+                             loc.days.map(d => d.substring(0, 3)).join(', ');
+            item.innerHTML = `
+                <div class="location-item-info">
+                    <span class="location-item-name">${loc.name}</span>
+                    <span class="location-item-days">${dayRange} (${loc.days.length} días)</span>
+                </div>
+                <div class="location-item-actions">
+                    <button class="btn-secondary btn-sm edit-location-btn" data-key="${key}" title="Editar">&#9998;</button>
+                    <button class="btn-secondary btn-sm delete-location-btn" data-key="${key}" title="Eliminar">&times;</button>
+                </div>
+            `;
+            locationsList.appendChild(item);
+        });
+
+        document.querySelectorAll('.edit-location-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                editLocation(this.dataset.key);
+            });
+        });
+
+        document.querySelectorAll('.delete-location-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                deleteLocation(this.dataset.key);
+            });
+        });
+    }
+
+    function addLocation() {
+        const name = locationNameInput.value.trim();
+        if (!name) {
+            alert('Ingrese un nombre para la ubicación');
+            return;
+        }
+
+        const selectedDays = [];
+        locationDaysCheckboxes.forEach(cb => {
+            if (cb.checked) selectedDays.push(cb.value);
+        });
+
+        if (selectedDays.length === 0) {
+            alert('Seleccione al menos un día');
+            return;
+        }
+
+        const key = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+        if (editingLocationId !== null) {
+            if (key !== editingLocationId && locations[key]) {
+                alert('Ya existe una ubicación con ese nombre');
+                return;
+            }
+            const oldData = locations[editingLocationId];
+            delete locations[editingLocationId];
+            locations[key] = { name: name, days: selectedDays };
+
+            const savedArrangements = JSON.parse(localStorage.getItem('arrangements') || '[]');
+            savedArrangements.forEach(a => {
+                if (a.location === editingLocationId) {
+                    a.location = key;
+                    a.locationName = name;
+                }
+            });
+            localStorage.setItem('arrangements', JSON.stringify(savedArrangements));
+
+            saveLocations();
+            renderLocationsList();
+            renderLocationSelect();
+            clearLocationForm();
+            return;
+        }
+
+        if (locations[key]) {
+            alert('Ya existe una ubicación con ese nombre');
+            return;
+        }
+
+        locations[key] = { name: name, days: selectedDays };
+        saveLocations();
+        renderLocationsList();
+        renderLocationSelect();
+        clearLocationForm();
+    }
+
+    function editLocation(key) {
+        const loc = locations[key];
+        if (!loc) return;
+
+        editingLocationId = key;
+        locationNameInput.value = loc.name;
+        editingLocationNameSpan.textContent = loc.name;
+        locationEditingDiv.classList.remove('hidden');
+        cancelLocationBtn.classList.remove('hidden');
+        addLocationBtn.textContent = 'Actualizar';
+
+        locationDaysCheckboxes.forEach(cb => {
+            cb.checked = loc.days.includes(cb.value);
+        });
+
+        locationNameInput.focus();
+    }
+
+    function deleteLocation(key) {
+        const loc = locations[key];
+        if (!loc) return;
+
+        if (Object.keys(locations).length <= 1) {
+            alert('Debe haber al menos una ubicación');
+            return;
+        }
+
+        if (confirm(`¿Eliminar la ubicación "${loc.name}"?`)) {
+            delete locations[key];
+            saveLocations();
+            renderLocationsList();
+            renderLocationSelect();
+            if (editingLocationId === key) clearLocationForm();
+        }
+    }
+
+    function clearLocationForm() {
+        editingLocationId = null;
+        locationNameInput.value = '';
+        locationDaysCheckboxes.forEach(cb => cb.checked = false);
+        locationEditingDiv.classList.add('hidden');
+        cancelLocationBtn.classList.add('hidden');
+        addLocationBtn.textContent = 'Agregar';
+    }
+
+    function getLocationConfig(key) {
+        return locations[key] || locations[Object.keys(locations)[0]];
+    }
+
+    function getWeekDates(startDate, locationKey) {
+        const dates = [];
+        const start = new Date(startDate + 'T00:00:00');
+        const loc = getLocationConfig(locationKey || locationSelect.value);
+
+        for (let i = 0; i < loc.days.length; i++) {
+            const date = new Date(start);
+            date.setDate(start.getDate() + i);
+            dates.push(formatDate(date));
+        }
+        return dates;
+    }
 
     function setDefaultDate() {
         const today = new Date();
@@ -48,20 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatDateDisplay(dateStr) {
         const date = new Date(dateStr + 'T00:00:00');
         return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-    }
-
-    function getWeekDates(startDate) {
-        const dates = [];
-        const start = new Date(startDate + 'T00:00:00');
-        const location = locationSelect.value;
-        const numDays = location === 'av-vollmer' ? 5 : 7;
-
-        for (let i = 0; i < numDays; i++) {
-            const date = new Date(start);
-            date.setDate(start.getDate() + i);
-            dates.push(formatDate(date));
-        }
-        return dates;
     }
 
     function loadParticipants() {
@@ -95,25 +286,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.querySelectorAll('.participant-tag .edit-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const id = parseInt(this.dataset.id);
-                editParticipant(id);
+                editParticipant(parseInt(this.dataset.id));
             });
         });
 
         document.querySelectorAll('.participant-tag .delete-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const id = parseInt(this.dataset.id);
-                deleteParticipant(id);
+                deleteParticipant(parseInt(this.dataset.id));
             });
         });
     }
 
     function addParticipant() {
         const name = participantNameInput.value.trim();
-        if (!name) {
-            alert('Ingrese un nombre');
-            return;
-        }
+        if (!name) { alert('Ingrese un nombre'); return; }
 
         if (editingParticipantId !== null) {
             const participant = participants.find(p => p.id === editingParticipantId);
@@ -132,11 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        participants.push({
-            id: Date.now(),
-            name: name
-        });
-
+        participants.push({ id: Date.now(), name: name });
         saveParticipants();
         renderParticipants();
         createDatalist();
@@ -163,9 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
             saveParticipants();
             renderParticipants();
             createDatalist();
-            if (editingParticipantId === id) {
-                clearParticipantForm();
-            }
+            if (editingParticipantId === id) clearParticipantForm();
         }
     }
 
@@ -179,26 +359,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function generateArrangement() {
         const startDate = weekStartInput.value;
-        if (!startDate) {
-            alert('Por favor seleccione una fecha de inicio de semana');
-            return;
-        }
+        if (!startDate) { alert('Seleccione una fecha de inicio de semana'); return; }
 
         createDatalist();
 
         const location = locationSelect.value;
-        const locationName = location === 'av-vollmer' ? 'Av. Vollmer' : 'Eloy Alfaro';
-        const days = location === 'av-vollmer' ? daysVollmer : daysAlfaro;
-        const dates = getWeekDates(startDate);
-
+        const loc = getLocationConfig(location);
+        const dates = getWeekDates(startDate, location);
         const endDate = dates[dates.length - 1];
-        const title = `Arreglo ${locationName} - ${formatDateDisplay(startDate)} al ${formatDateDisplay(endDate)}`;
-        arrangementTitle.textContent = title;
+
+        arrangementTitle.textContent = `Arreglo ${loc.name} - ${formatDateDisplay(startDate)} al ${formatDateDisplay(endDate)}`;
 
         currentArrangement = {
             id: Date.now(),
             location: location,
-            locationName: locationName,
+            locationName: loc.name,
             startDate: startDate,
             endDate: endDate,
             days: {}
@@ -206,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         arrangementGrid.innerHTML = '';
 
-        days.forEach((day, index) => {
+        loc.days.forEach((day, index) => {
             const dayColumn = document.createElement('div');
             dayColumn.className = 'day-column';
 
@@ -246,7 +421,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         const slotTime = this.dataset.slot;
                         const idx = parseInt(this.dataset.index);
                         const value = this.value.trim();
-
                         if (value) {
                             currentArrangement.days[date][slotTime][idx] = value;
                         } else {
@@ -278,63 +452,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const inputs = slot.querySelectorAll('.participant-input');
             const count = slot.querySelector('.participant-count');
             let filled = 0;
-
-            inputs.forEach(input => {
-                if (input.value.trim()) filled++;
-            });
-
+            inputs.forEach(input => { if (input.value.trim()) filled++; });
             count.textContent = `${filled}/3 participantes`;
         });
-    }
-
-    function generatePreviewHTML() {
-        const days = currentArrangement.location === 'av-vollmer' ? daysVollmer : daysAlfaro;
-        const dates = getWeekDates(currentArrangement.startDate);
-
-        let html = `
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="color: #1a5276;">Arreglo de Predicación Pública</h2>
-                <h3>${currentArrangement.locationName}</h3>
-                <p><strong>Período:</strong> ${formatDateDisplay(currentArrangement.startDate)} al ${formatDateDisplay(currentArrangement.endDate)}</p>
-            </div>
-            <table class="preview-table">
-                <thead>
-                    <tr>
-                        <th>Turno</th>
-        `;
-
-        days.forEach(day => {
-            html += `<th>${day}</th>`;
-        });
-
-        html += `</tr></thead><tbody>`;
-
-        timeSlots.forEach(slot => {
-            html += `<tr><td><strong>${slot}</strong></td>`;
-
-            days.forEach((day, index) => {
-                const date = dates[index];
-                const participants = currentArrangement.days[date]?.[slot] || [];
-                const names = participants.filter(p => p && p.trim()).join('<br>') || '-';
-                html += `<td>${names}</td>`;
-            });
-
-            html += `</tr>`;
-        });
-
-        html += `</tbody></table>`;
-        return html;
-    }
-
-    function showPreview() {
-        if (!currentArrangement) {
-            alert('Primero genere un arreglo');
-            return;
-        }
-
-        updateArrangementData();
-        previewContent.innerHTML = generatePreviewHTML();
-        previewModal.classList.remove('hidden');
     }
 
     function updateArrangementData() {
@@ -343,7 +463,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const slot = input.dataset.slot;
             const index = parseInt(input.dataset.index);
             const value = input.value.trim();
-
             if (value) {
                 currentArrangement.days[date][slot][index] = value;
             } else {
@@ -352,25 +471,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function generatePreviewHTML() {
+        const loc = getLocationConfig(currentArrangement.location);
+        const dates = getWeekDates(currentArrangement.startDate, currentArrangement.location);
+
+        let html = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #1a5276;">Arreglo de Predicación Pública</h2>
+                <h3>${currentArrangement.locationName}</h3>
+                <p><strong>Período:</strong> ${formatDateDisplay(currentArrangement.startDate)} al ${formatDateDisplay(currentArrangement.endDate)}</p>
+            </div>
+            <table class="preview-table">
+                <thead><tr><th>Turno</th>`;
+
+        loc.days.forEach(day => { html += `<th>${day}</th>`; });
+        html += `</tr></thead><tbody>`;
+
+        timeSlots.forEach(slot => {
+            html += `<tr><td><strong>${slot}</strong></td>`;
+            loc.days.forEach((day, index) => {
+                const date = dates[index];
+                const participants = currentArrangement.days[date]?.[slot] || [];
+                const names = participants.filter(p => p && p.trim()).join('<br>') || '-';
+                html += `<td>${names}</td>`;
+            });
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+        return html;
+    }
+
+    function showPreview() {
+        if (!currentArrangement) { alert('Primero genere un arreglo'); return; }
+        updateArrangementData();
+        previewContent.innerHTML = generatePreviewHTML();
+        previewModal.classList.remove('hidden');
+    }
+
     function generatePDF() {
-        if (!currentArrangement) {
-            alert('Primero genere un arreglo');
-            return;
-        }
+        if (!currentArrangement) { alert('Primero genere un arreglo'); return; }
 
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: [140, 216]
-        });
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [140, 216] });
 
         const pageWidth = 140;
         const pageHeight = 216;
         const margin = 5;
 
-        const days = currentArrangement.location === 'av-vollmer' ? daysVollmer : daysAlfaro;
-        const dates = getWeekDates(currentArrangement.startDate);
+        const loc = getLocationConfig(currentArrangement.location);
+        const dates = getWeekDates(currentArrangement.startDate, currentArrangement.location);
 
         doc.setFillColor(26, 82, 118);
         doc.rect(0, 0, pageWidth, 20, 'F');
@@ -390,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const startY = 24;
         const timeColWidth = 20;
         const totalWidth = pageWidth - (margin * 2);
-        const colWidth = (totalWidth - timeColWidth) / days.length;
+        const colWidth = (totalWidth - timeColWidth) / loc.days.length;
         const rowHeight = 24;
 
         doc.setFillColor(26, 82, 118);
@@ -401,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.setFont('helvetica', 'bold');
         doc.text('TURNO', margin + timeColWidth / 2, startY + 5.5, { align: 'center' });
 
-        days.forEach((day, i) => {
+        loc.days.forEach((day, i) => {
             const x = margin + timeColWidth + i * colWidth;
             doc.setFontSize(6.5);
             doc.text(day, x + colWidth / 2, startY + 3, { align: 'center' });
@@ -412,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let currentY = startY + 8;
 
-        timeSlots.forEach((slot, slotIndex) => {
+        timeSlots.forEach((slot) => {
             doc.setFillColor(245, 248, 252);
             doc.rect(margin, currentY, totalWidth, rowHeight, 'F');
 
@@ -432,7 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setFont('helvetica', 'bold');
             doc.text(slot, margin + timeColWidth / 2, currentY + rowHeight / 2, { align: 'center' });
 
-            days.forEach((day, dayIndex) => {
+            loc.days.forEach((day, dayIndex) => {
                 const x = margin + timeColWidth + dayIndex * colWidth;
                 const date = dates[dayIndex];
                 const participants = currentArrangement.days[date]?.[slot] || [];
@@ -454,7 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (nameIndex < 3) {
                         const splitName = doc.splitTextToSize(name, maxLineWidth);
                         const linesToShow = splitName.slice(0, 2);
-
                         linesToShow.forEach((line, lineIndex) => {
                             doc.text(line, x + colWidth / 2, startYNames + nameIndex * 7 + lineIndex * lineSpacing, { align: 'center' });
                         });
@@ -475,16 +624,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const fileName = `Arreglo Exhibidor ${currentArrangement.locationName.replace(/\s+/g, '')} ${currentArrangement.startDate.replace(/-/g, '')}.pdf`;
         doc.save(fileName);
-
         previewModal.classList.add('hidden');
     }
 
     function saveArrangement() {
-        if (!currentArrangement) {
-            alert('Primero genere un arreglo');
-            return;
-        }
-
+        if (!currentArrangement) { alert('Primero genere un arreglo'); return; }
         updateArrangementData();
 
         const savedArrangements = JSON.parse(localStorage.getItem('arrangements') || '[]');
@@ -510,11 +654,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         savedList.innerHTML = '';
-
         savedArrangements.forEach(arrangement => {
             const item = document.createElement('div');
             item.className = 'saved-item';
-
             item.innerHTML = `
                 <div class="saved-item-info">
                     <div class="saved-item-location">${arrangement.locationName}</div>
@@ -522,10 +664,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="saved-item-actions">
                     <button class="btn-secondary load-btn" data-id="${arrangement.id}">Cargar</button>
+                    <button class="btn-secondary copy-btn" data-id="${arrangement.id}">Copiar</button>
                     <button class="btn-secondary delete-btn" data-id="${arrangement.id}">Eliminar</button>
                 </div>
             `;
-
             savedList.appendChild(item);
         });
 
@@ -533,9 +675,15 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.addEventListener('click', function() {
                 const id = parseInt(this.dataset.id);
                 const arrangement = savedArrangements.find(a => a.id === id);
-                if (arrangement) {
-                    loadArrangement(arrangement);
-                }
+                if (arrangement) loadArrangement(arrangement);
+            });
+        });
+
+        document.querySelectorAll('.saved-item-actions .copy-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = parseInt(this.dataset.id);
+                const arrangement = savedArrangements.find(a => a.id === id);
+                if (arrangement) copyArrangement(arrangement);
             });
         });
 
@@ -557,14 +705,36 @@ document.addEventListener('DOMContentLoaded', function() {
         locationSelect.value = arrangement.location;
         weekStartInput.value = arrangement.startDate;
 
+        const loc = getLocationConfig(arrangement.location);
+        const dates = getWeekDates(arrangement.startDate, arrangement.location);
+
         arrangementTitle.textContent = `Arreglo ${arrangement.locationName} - ${formatDateDisplay(arrangement.startDate)} al ${formatDateDisplay(arrangement.endDate)}`;
 
-        const days = arrangement.location === 'av-vollmer' ? daysVollmer : daysAlfaro;
-        const dates = getWeekDates(arrangement.startDate);
+        renderArrangementGrid(loc, dates, arrangement);
+        arrangementSection.classList.remove('hidden');
+    }
 
+    function copyArrangement(arrangement) {
+        createDatalist();
+        currentArrangement = JSON.parse(JSON.stringify(arrangement));
+        currentArrangement.id = Date.now();
+        locationSelect.value = arrangement.location;
+        weekStartInput.value = arrangement.startDate;
+
+        const loc = getLocationConfig(arrangement.location);
+        const dates = getWeekDates(arrangement.startDate, arrangement.location);
+
+        arrangementTitle.textContent = `Arreglo ${arrangement.locationName} - ${formatDateDisplay(arrangement.startDate)} al ${formatDateDisplay(endDate)}`;
+
+        renderArrangementGrid(loc, dates, currentArrangement);
+        arrangementSection.classList.remove('hidden');
+        alert('Arreglo copiado. Modifique la fecha de inicio si desea, luego guarde como nuevo.');
+    }
+
+    function renderArrangementGrid(loc, dates, arrangement) {
         arrangementGrid.innerHTML = '';
 
-        days.forEach((day, index) => {
+        loc.days.forEach((day, index) => {
             const dayColumn = document.createElement('div');
             dayColumn.className = 'day-column';
 
@@ -599,6 +769,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     input.setAttribute('list', 'participants-datalist');
 
                     input.addEventListener('input', function() {
+                        const date = this.dataset.date;
+                        const slotTime = this.dataset.slot;
+                        const idx = parseInt(this.dataset.index);
+                        const value = this.value.trim();
+                        if (value) {
+                            currentArrangement.days[date][slotTime][idx] = value;
+                        } else {
+                            delete currentArrangement.days[date][slotTime][idx];
+                        }
                         updateParticipantCounts();
                     });
 
@@ -617,8 +796,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             arrangementGrid.appendChild(dayColumn);
         });
-
-        arrangementSection.classList.remove('hidden');
     }
 
     function closeModal() {
@@ -632,9 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
             datalist.id = 'participants-datalist';
             document.body.appendChild(datalist);
         }
-
         datalist.innerHTML = '';
-
         participants.forEach(p => {
             const option = document.createElement('option');
             option.value = p.name;
@@ -642,53 +817,57 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Init
+    loadLocations();
+    renderLocationSelect();
+    renderLocationsList();
     setDefaultDate();
     loadParticipants();
     loadSavedArrangements();
     createDatalist();
 
+    // Location events
+    addLocationBtn.addEventListener('click', addLocation);
+    cancelLocationBtn.addEventListener('click', clearLocationForm);
+
+    // Participant events
     addParticipantBtn.addEventListener('click', addParticipant);
     cancelEditBtn.addEventListener('click', clearParticipantForm);
-
     participantNameInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            addParticipant();
-        }
+        if (e.key === 'Enter') addParticipant();
     });
 
+    // Arrangement events
     generateBtn.addEventListener('click', generateArrangement);
     previewBtn.addEventListener('click', showPreview);
     saveBtn.addEventListener('click', saveArrangement);
     pdfBtn.addEventListener('click', showPreview);
     confirmPdfBtn.addEventListener('click', generatePDF);
 
+    // Modal events
     document.querySelectorAll('.close-modal').forEach(btn => {
         btn.addEventListener('click', closeModal);
     });
-
     previewModal.addEventListener('click', function(e) {
-        if (e.target === previewModal) {
-            closeModal();
-        }
+        if (e.target === previewModal) closeModal();
     });
 
+    // Grid events
     arrangementGrid.addEventListener('input', function() {
         updateParticipantCounts();
     });
 
-    // Backup and Share Functions
+    // Backup functions
     const exportWhatsappBtn = document.getElementById('export-whatsapp-btn');
     const exportFileBtn = document.getElementById('export-file-btn');
     const importFileBtn = document.getElementById('import-file-btn');
     const importFileInput = document.getElementById('import-file-input');
 
     function getBackupData() {
-        const savedParticipants = JSON.parse(localStorage.getItem('participants') || '[]');
-        const savedArrangements = JSON.parse(localStorage.getItem('arrangements') || '[]');
-
         return {
-            participants: savedParticipants,
-            arrangements: savedArrangements,
+            participants: JSON.parse(localStorage.getItem('participants') || '[]'),
+            arrangements: JSON.parse(localStorage.getItem('arrangements') || '[]'),
+            locations: JSON.parse(localStorage.getItem('locations') || '{}'),
             exportDate: new Date().toISOString()
         };
     }
@@ -699,40 +878,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (data.participants.length > 0) {
             message += 'PARTICIPANTES:\n';
-            data.participants.forEach((p, i) => {
-                message += `${i + 1}. ${p.name}\n`;
-            });
+            data.participants.forEach((p, i) => { message += `${i + 1}. ${p.name}\n`; });
             message += '\n';
         }
 
         if (data.arrangements.length > 0) {
             message += 'ARREGLOS GUARDADOS:\n';
             data.arrangements.forEach(a => {
-                message += `\n- ${a.locationName}\n`;
-                message += `  Período: ${a.startDate} al ${a.endDate}\n`;
+                message += `\n- ${a.locationName}\n  Período: ${a.startDate} al ${a.endDate}\n`;
             });
         }
 
         message += '\n================================\n';
         message += 'Para restaurar, usa la opción "Cargar Archivo" en la app.';
-
         return message;
     }
 
     function exportToWhatsApp() {
         const data = getBackupData();
-
         if (data.participants.length === 0 && data.arrangements.length === 0) {
             alert('No hay datos para respaldar');
             return;
         }
-
         const message = formatBackupForWhatsApp(data);
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-
-        window.open(whatsappUrl, '_blank');
-
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
         exportBackupFile(data);
     }
 
@@ -740,7 +909,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const backupData = JSON.stringify(data, null, 2);
         const blob = new Blob([backupData], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-
         const a = document.createElement('a');
         a.href = url;
         a.download = `respaldo-exhibidores-${formatDate(new Date())}.json`;
@@ -752,19 +920,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function exportToFile() {
         const data = getBackupData();
-
         if (data.participants.length === 0 && data.arrangements.length === 0) {
             alert('No hay datos para respaldar');
             return;
         }
-
         exportBackupFile(data);
         alert('Archivo de respaldo descargado');
     }
 
-    function importFromFile() {
-        importFileInput.click();
-    }
+    function importFromFile() { importFileInput.click(); }
 
     function handleFileImport(event) {
         const file = event.target.files[0];
@@ -774,52 +938,47 @@ document.addEventListener('DOMContentLoaded', function() {
         reader.onload = function(e) {
             try {
                 const data = JSON.parse(e.target.result);
-
-                if (!data.participants && !data.arrangements) {
+                if (!data.participants && !data.arrangements && !data.locations) {
                     alert('Archivo de respaldo inválido');
                     return;
                 }
 
                 let importMessage = '¿Qué datos desea importar?\n\n';
-                let hasParticipants = data.participants && data.participants.length > 0;
-                let hasArrangements = data.arrangements && data.arrangements.length > 0;
-
-                if (hasParticipants) {
-                    importMessage += `• ${data.participants.length} participantes\n`;
-                }
-                if (hasArrangements) {
-                    importMessage += `• ${data.arrangements.length} arreglos guardados\n`;
-                }
-
+                if (data.participants?.length > 0) importMessage += `• ${data.participants.length} participantes\n`;
+                if (data.arrangements?.length > 0) importMessage += `• ${data.arrangements.length} arreglos guardados\n`;
+                if (data.locations && Object.keys(data.locations).length > 0) importMessage += `• ${Object.keys(data.locations).length} ubicaciones\n`;
                 importMessage += '\n¿Desea continuar? (Los datos actuales se mantendrán)';
 
                 if (confirm(importMessage)) {
-                    if (hasParticipants) {
+                    if (data.participants?.length > 0) {
                         const currentParticipants = JSON.parse(localStorage.getItem('participants') || '[]');
-                        const mergedParticipants = [...currentParticipants];
-
+                        const merged = [...currentParticipants];
                         data.participants.forEach(newP => {
-                            if (!mergedParticipants.some(p => p.name.toLowerCase() === newP.name.toLowerCase())) {
-                                mergedParticipants.push(newP);
+                            if (!merged.some(p => p.name.toLowerCase() === newP.name.toLowerCase())) {
+                                merged.push(newP);
                             }
                         });
-
-                        localStorage.setItem('participants', JSON.stringify(mergedParticipants));
+                        localStorage.setItem('participants', JSON.stringify(merged));
                         loadParticipants();
                     }
 
-                    if (hasArrangements) {
+                    if (data.arrangements?.length > 0) {
                         const currentArrangements = JSON.parse(localStorage.getItem('arrangements') || '[]');
-                        const mergedArrangements = [...currentArrangements];
-
+                        const merged = [...currentArrangements];
                         data.arrangements.forEach(newA => {
-                            if (!mergedArrangements.some(a => a.id === newA.id)) {
-                                mergedArrangements.push(newA);
-                            }
+                            if (!merged.some(a => a.id === newA.id)) merged.push(newA);
                         });
-
-                        localStorage.setItem('arrangements', JSON.stringify(mergedArrangements));
+                        localStorage.setItem('arrangements', JSON.stringify(merged));
                         loadSavedArrangements();
+                    }
+
+                    if (data.locations && Object.keys(data.locations).length > 0) {
+                        const currentLocations = JSON.parse(localStorage.getItem('locations') || '{}');
+                        Object.assign(currentLocations, data.locations);
+                        localStorage.setItem('locations', JSON.stringify(currentLocations));
+                        loadLocations();
+                        renderLocationSelect();
+                        renderLocationsList();
                     }
 
                     createDatalist();
