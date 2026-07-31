@@ -31,8 +31,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const locationEditingDiv = document.getElementById('location-editing');
     const editingLocationNameSpan = document.getElementById('editing-location-name');
 
+    const slotStartInput = document.getElementById('slot-start');
+    const slotEndInput = document.getElementById('slot-end');
+    const addSlotBtn = document.getElementById('add-slot-btn');
+    const cancelSlotBtn = document.getElementById('cancel-slot-btn');
+    const slotsList = document.getElementById('slots-list');
+    const slotEditingDiv = document.getElementById('slot-editing');
+    const editingSlotNameSpan = document.getElementById('editing-slot-name');
+
     const allDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const timeSlots = ['8:00 - 10:00', '10:00 - 12:00', '12:00 - 14:00', '14:00 - 16:00'];
+    const DEFAULT_TIME_SLOTS = ['8:00 - 10:00', '10:00 - 12:00', '12:00 - 14:00', '14:00 - 16:00'];
 
     const DEFAULT_LOCATIONS = {
         'av-vollmer': { name: 'Av. Vollmer', days: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'] },
@@ -42,8 +50,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentArrangement = null;
     let editingParticipantId = null;
     let editingLocationId = null;
+    let editingSlotId = null;
     let participants = [];
     let locations = {};
+    let timeSlots = [];
 
     function loadLocations() {
         const saved = localStorage.getItem('locations');
@@ -217,6 +227,145 @@ document.addEventListener('DOMContentLoaded', function() {
         locationEditingDiv.classList.add('hidden');
         cancelLocationBtn.classList.add('hidden');
         addLocationBtn.textContent = 'Agregar';
+    }
+
+    function loadTimeSlots() {
+        const saved = localStorage.getItem('timeSlots');
+        if (saved) {
+            timeSlots = JSON.parse(saved);
+        } else {
+            timeSlots = [...DEFAULT_TIME_SLOTS];
+            saveTimeSlots();
+        }
+    }
+
+    function saveTimeSlots() {
+        localStorage.setItem('timeSlots', JSON.stringify(timeSlots));
+    }
+
+    function formatTimeSlot(start, end) {
+        function fmt(t) {
+            const [h, m] = t.split(':');
+            return `${parseInt(h)}:${m}`;
+        }
+        return `${fmt(start)} - ${fmt(end)}`;
+    }
+
+    function parseTimeSlot(slot) {
+        const parts = slot.split(' - ');
+        return { start: parts[0] + ':00', end: parts[1] + ':00' };
+    }
+
+    function renderSlotsList() {
+        if (timeSlots.length === 0) {
+            slotsList.innerHTML = '<p class="empty-message">No hay turnos definidos</p>';
+            return;
+        }
+
+        slotsList.innerHTML = '';
+        timeSlots.forEach((slot, index) => {
+            const item = document.createElement('div');
+            item.className = 'location-item';
+            item.innerHTML = `
+                <div class="location-item-info">
+                    <span class="location-item-name">${slot}</span>
+                </div>
+                <div class="location-item-actions">
+                    <button class="btn-secondary btn-sm edit-slot-btn" data-index="${index}" title="Editar">&#9998;</button>
+                    <button class="btn-secondary btn-sm delete-slot-btn" data-index="${index}" title="Eliminar">&times;</button>
+                </div>
+            `;
+            slotsList.appendChild(item);
+        });
+
+        document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                editTimeSlot(parseInt(this.dataset.index));
+            });
+        });
+
+        document.querySelectorAll('.delete-slot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                deleteTimeSlot(parseInt(this.dataset.index));
+            });
+        });
+    }
+
+    function addTimeSlot() {
+        const start = slotStartInput.value;
+        const end = slotEndInput.value;
+
+        if (!start || !end) {
+            alert('Ingrese hora de inicio y fin');
+            return;
+        }
+
+        if (start >= end) {
+            alert('La hora de fin debe ser posterior a la de inicio');
+            return;
+        }
+
+        const slotText = formatTimeSlot(start, end);
+
+        if (editingSlotId !== null) {
+            timeSlots[editingSlotId] = slotText;
+            saveTimeSlots();
+            renderSlotsList();
+            clearSlotForm();
+            return;
+        }
+
+        if (timeSlots.some(s => s === slotText)) {
+            alert('Este turno ya existe');
+            return;
+        }
+
+        timeSlots.push(slotText);
+        timeSlots.sort((a, b) => {
+            const aStart = parseTimeSlot(a).start;
+            const bStart = parseTimeSlot(b).start;
+            return aStart.localeCompare(bStart);
+        });
+
+        saveTimeSlots();
+        renderSlotsList();
+        clearSlotForm();
+    }
+
+    function editTimeSlot(index) {
+        const slot = timeSlots[index];
+        const parsed = parseTimeSlot(slot);
+
+        editingSlotId = index;
+        slotStartInput.value = parsed.start.substring(0, 5);
+        slotEndInput.value = parsed.end.substring(0, 5);
+        editingSlotNameSpan.textContent = slot;
+        slotEditingDiv.classList.remove('hidden');
+        cancelSlotBtn.classList.remove('hidden');
+        addSlotBtn.textContent = 'Actualizar';
+    }
+
+    function deleteTimeSlot(index) {
+        if (timeSlots.length <= 1) {
+            alert('Debe haber al menos un turno');
+            return;
+        }
+
+        if (confirm(`¿Eliminar el turno "${timeSlots[index]}"?`)) {
+            timeSlots.splice(index, 1);
+            saveTimeSlots();
+            renderSlotsList();
+            if (editingSlotId === index) clearSlotForm();
+        }
+    }
+
+    function clearSlotForm() {
+        editingSlotId = null;
+        slotStartInput.value = '';
+        slotEndInput.value = '';
+        slotEditingDiv.classList.add('hidden');
+        cancelSlotBtn.classList.add('hidden');
+        addSlotBtn.textContent = 'Agregar';
     }
 
     function getLocationConfig(key) {
@@ -819,8 +968,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Init
     loadLocations();
+    loadTimeSlots();
     renderLocationSelect();
     renderLocationsList();
+    renderSlotsList();
     setDefaultDate();
     loadParticipants();
     loadSavedArrangements();
@@ -829,6 +980,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Location events
     addLocationBtn.addEventListener('click', addLocation);
     cancelLocationBtn.addEventListener('click', clearLocationForm);
+
+    // Time slot events
+    addSlotBtn.addEventListener('click', addTimeSlot);
+    cancelSlotBtn.addEventListener('click', clearSlotForm);
+    slotStartInput.addEventListener('change', function() {
+        if (slotStartInput.value && !slotEndInput.value) {
+            const [h, m] = slotStartInput.value.split(':');
+            slotEndInput.value = `${String(parseInt(h) + 2).padStart(2, '0')}:${m}`;
+        }
+    });
 
     // Participant events
     addParticipantBtn.addEventListener('click', addParticipant);
@@ -868,6 +1029,7 @@ document.addEventListener('DOMContentLoaded', function() {
             participants: JSON.parse(localStorage.getItem('participants') || '[]'),
             arrangements: JSON.parse(localStorage.getItem('arrangements') || '[]'),
             locations: JSON.parse(localStorage.getItem('locations') || '{}'),
+            timeSlots: JSON.parse(localStorage.getItem('timeSlots') || '[]'),
             exportDate: new Date().toISOString()
         };
     }
@@ -875,6 +1037,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatBackupForWhatsApp(data) {
         let message = 'ARREGLO DE EXHIBIDORES - RESPALDO\n';
         message += '================================\n\n';
+
+        if (data.timeSlots && data.timeSlots.length > 0) {
+            message += 'TURNOS:\n';
+            data.timeSlots.forEach((s, i) => { message += `${i + 1}. ${s}\n`; });
+            message += '\n';
+        }
 
         if (data.participants.length > 0) {
             message += 'PARTICIPANTES:\n';
@@ -938,18 +1106,35 @@ document.addEventListener('DOMContentLoaded', function() {
         reader.onload = function(e) {
             try {
                 const data = JSON.parse(e.target.result);
-                if (!data.participants && !data.arrangements && !data.locations) {
+                if (!data.participants && !data.arrangements && !data.locations && !data.timeSlots) {
                     alert('Archivo de respaldo inválido');
                     return;
                 }
 
                 let importMessage = '¿Qué datos desea importar?\n\n';
+                if (data.timeSlots?.length > 0) importMessage += `• ${data.timeSlots.length} turnos\n`;
                 if (data.participants?.length > 0) importMessage += `• ${data.participants.length} participantes\n`;
                 if (data.arrangements?.length > 0) importMessage += `• ${data.arrangements.length} arreglos guardados\n`;
                 if (data.locations && Object.keys(data.locations).length > 0) importMessage += `• ${Object.keys(data.locations).length} ubicaciones\n`;
                 importMessage += '\n¿Desea continuar? (Los datos actuales se mantendrán)';
 
                 if (confirm(importMessage)) {
+                    if (data.timeSlots?.length > 0) {
+                        const currentSlots = JSON.parse(localStorage.getItem('timeSlots') || '[]');
+                        const merged = [...currentSlots];
+                        data.timeSlots.forEach(newS => {
+                            if (!merged.includes(newS)) merged.push(newS);
+                        });
+                        merged.sort((a, b) => {
+                            const aStart = parseTimeSlot(a).start;
+                            const bStart = parseTimeSlot(b).start;
+                            return aStart.localeCompare(bStart);
+                        });
+                        localStorage.setItem('timeSlots', JSON.stringify(merged));
+                        loadTimeSlots();
+                        renderSlotsList();
+                    }
+
                     if (data.participants?.length > 0) {
                         const currentParticipants = JSON.parse(localStorage.getItem('participants') || '[]');
                         const merged = [...currentParticipants];

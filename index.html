@@ -56,6 +56,26 @@
             </div>
         </section>
 
+        <section class="slots-manage-section">
+            <h3>Gestionar Turnos</h3>
+            <div class="slot-form">
+                <div class="slot-form-row">
+                    <input type="time" id="slot-start" required>
+                    <span class="slot-separator">a</span>
+                    <input type="time" id="slot-end" required>
+                    <button id="add-slot-btn" class="btn-primary">Agregar</button>
+                    <button id="cancel-slot-btn" class="btn-secondary hidden">Cancelar</button>
+                </div>
+                <p class="hint">Define los turnos horarios para los arreglos</p>
+                <div id="slot-editing" class="location-editing hidden">
+                    <span>Editando turno: <strong id="editing-slot-name"></strong></span>
+                </div>
+            </div>
+            <div id="slots-list" class="locations-list">
+                <p class="empty-message">No hay turnos definidos</p>
+            </div>
+        </section>
+
         <section class="config-section">
             <div class="config-row">
                 <div class="config-group">

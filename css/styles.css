@@ -431,6 +431,50 @@ header h2 {
     font-size: 0.85rem;
 }
 
+/* Time Slot Management Styles */
+.slots-manage-section {
+    margin-bottom: 25px;
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slots-manage-section h3 {
+    margin-bottom: 15px;
+    color: #1a5276;
+}
+
+.slot-form {
+    margin-bottom: 15px;
+}
+
+.slot-form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.slot-form-row input[type="time"] {
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: inherit;
+}
+
+.slot-form-row input[type="time"]:focus {
+    outline: none;
+    border-color: #2980b9;
+}
+
+.slot-separator {
+    font-weight: 600;
+    color: #555;
+    font-size: 1rem;
+}
+
 .participants-toggle {
     margin-top: 15px;
     padding-top: 10px;
@@ -761,6 +805,15 @@ header h2 {
 
     .participants-list {
         justify-content: center;
+    }
+
+    .slot-form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .slot-form-row input[type="time"] {
+        width: 100%;
     }
 
     .location-days-checkboxes {
