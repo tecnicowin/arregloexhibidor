@@ -670,7 +670,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const pageHeight = 216;
         const margin = 10;
         const contentWidth = pageWidth - (margin * 2);
-        const contentHeight = pageHeight - (margin * 2);
 
         const doc = new jsPDF({
             orientation: 'landscape',
@@ -681,71 +680,71 @@ document.addEventListener('DOMContentLoaded', function() {
         const loc = getLocationConfig(currentArrangement.location);
         const dates = getWeekDates(currentArrangement.startDate, currentArrangement.location);
         const numDays = loc.days.length;
-        const numSlots = timeSlots.length;
 
-        const headerHeight = 22;
-        const footerHeight = 10;
-        const tableHeaderHeight = 10;
+        const headerHeight = 28;
+        const footerHeight = 12;
+        const tableHeaderHeight = 12;
         const tableTopY = margin + headerHeight + 2;
-        const availableTableHeight = contentHeight - headerHeight - footerHeight - tableHeaderHeight - 4;
-        const rowHeight = Math.min(Math.floor(availableTableHeight / numSlots), 30);
-        const timeColWidth = 22;
+        const availableHeight = pageHeight - margin * 2 - headerHeight - footerHeight - tableHeaderHeight - 4;
+        const rowHeight = Math.floor(availableHeight / timeSlots.length);
+        const timeColWidth = 28;
         const colWidth = (contentWidth - timeColWidth) / numDays;
+        const cellPadding = 2;
 
         doc.setFillColor(26, 82, 118);
         doc.rect(0, 0, pageWidth, margin + headerHeight, 'F');
 
         doc.setTextColor(255);
-        doc.setFontSize(18);
+        doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
-        doc.text('ARREGLO DE PREDICACIÓN PÚBLICA', pageWidth / 2, margin + 8, { align: 'center' });
+        doc.text('ARREGLO DE PREDICACIÓN PÚBLICA', pageWidth / 2, margin + 10, { align: 'center' });
 
-        doc.setFontSize(13);
-        doc.text(currentArrangement.locationName, pageWidth / 2, margin + 15, { align: 'center' });
+        doc.setFontSize(16);
+        doc.text(currentArrangement.locationName, pageWidth / 2, margin + 18, { align: 'center' });
 
-        doc.setFontSize(9);
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Período: ${formatDateDisplay(currentArrangement.startDate)} al ${formatDateDisplay(currentArrangement.endDate)}`, pageWidth / 2, margin + 20, { align: 'center' });
+        doc.text(`Período: ${formatDateDisplay(currentArrangement.startDate)} al ${formatDateDisplay(currentArrangement.endDate)}`, pageWidth / 2, margin + 24, { align: 'center' });
 
         doc.setFillColor(26, 82, 118);
         doc.rect(margin, tableTopY, contentWidth, tableHeaderHeight, 'F');
 
         doc.setTextColor(255);
-        doc.setFontSize(8);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text('TURNO', margin + timeColWidth / 2, tableTopY + 6.5, { align: 'center' });
+        doc.text('TURNO', margin + timeColWidth / 2, tableTopY + 8, { align: 'center' });
 
         loc.days.forEach((day, i) => {
             const x = margin + timeColWidth + i * colWidth;
-            doc.setFontSize(7.5);
-            doc.text(day, x + colWidth / 2, tableTopY + 4, { align: 'center' });
-            doc.setFontSize(6);
+            doc.setFontSize(9);
+            doc.text(day, x + colWidth / 2, tableTopY + 5, { align: 'center' });
+            doc.setFontSize(7);
             doc.setFont('helvetica', 'normal');
-            doc.text(formatDateDisplay(dates[i]), x + colWidth / 2, tableTopY + 8, { align: 'center' });
+            doc.text(formatDateDisplay(dates[i]), x + colWidth / 2, tableTopY + 10, { align: 'center' });
         });
 
         let currentY = tableTopY + tableHeaderHeight;
 
         timeSlots.forEach((slot, slotIndex) => {
-            const bgColor = slotIndex % 2 === 0 ? [245, 248, 252] : [255, 255, 255];
+            const bgColor = slotIndex % 2 === 0 ? [240, 245, 252] : [255, 255, 255];
             doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
             doc.rect(margin, currentY, contentWidth, rowHeight, 'F');
 
-            doc.setDrawColor(200, 210, 220);
-            doc.setLineWidth(0.3);
+            doc.setDrawColor(180, 195, 210);
+            doc.setLineWidth(0.4);
             doc.rect(margin, currentY, contentWidth, rowHeight);
 
             doc.setFillColor(26, 82, 118);
             doc.rect(margin, currentY, timeColWidth, rowHeight, 'F');
 
             doc.setDrawColor(26, 82, 118);
-            doc.setLineWidth(0.5);
+            doc.setLineWidth(0.6);
             doc.rect(margin, currentY, timeColWidth, rowHeight);
 
             doc.setTextColor(255);
-            doc.setFontSize(7.5);
+            doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.text(slot, margin + timeColWidth / 2, currentY + rowHeight / 2 + 1, { align: 'center' });
+            doc.text(slot, margin + timeColWidth / 2, currentY + rowHeight / 2 + 1.5, { align: 'center' });
 
             loc.days.forEach((day, dayIndex) => {
                 const x = margin + timeColWidth + dayIndex * colWidth;
@@ -753,26 +752,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 const participants = currentArrangement.days[date]?.[slot] || [];
                 const names = participants.filter(p => p && p.trim());
 
-                doc.setDrawColor(200, 210, 220);
-                doc.setLineWidth(0.2);
+                doc.setDrawColor(180, 195, 210);
+                doc.setLineWidth(0.3);
                 doc.rect(x, currentY, colWidth, rowHeight);
 
-                doc.setTextColor(40);
+                const maxLineWidth = colWidth - cellPadding * 2;
+                const fontSize = 8;
+                const lineHeight = 4.2;
+                const maxLines = Math.floor((rowHeight - 4) / lineHeight);
+                const totalNames = Math.min(names.length, 3);
+
+                let textBlockHeight = 0;
+                const nameLines = [];
+                names.slice(0, 3).forEach((name) => {
+                    const lines = doc.splitTextToSize(name, maxLineWidth);
+                    const shown = lines.slice(0, Math.min(2, maxLines));
+                    nameLines.push(shown);
+                    textBlockHeight += shown.length * lineHeight;
+                });
+
+                const startYNames = currentY + (rowHeight - textBlockHeight) / 2 + 1;
+
+                doc.setTextColor(30);
                 doc.setFont('helvetica', 'bold');
+                doc.setFontSize(fontSize);
 
-                const maxLineWidth = colWidth - 3;
-                const lineHeight = 4;
-                const maxLines = Math.floor((rowHeight - 6) / lineHeight);
-                const startYNames = currentY + 3.5;
-
-                names.slice(0, 3).forEach((name, nameIndex) => {
-                    const splitName = doc.splitTextToSize(name, maxLineWidth);
-                    const linesToShow = splitName.slice(0, Math.min(2, maxLines));
-
-                    linesToShow.forEach((line, lineIndex) => {
-                        doc.setFontSize(6.5);
-                        doc.text(line, x + colWidth / 2, startYNames + nameIndex * 7 + lineIndex * lineHeight, { align: 'center' });
+                let yOffset = startYNames;
+                nameLines.forEach((lines) => {
+                    lines.forEach((line) => {
+                        doc.text(line, x + colWidth / 2, yOffset, { align: 'center' });
+                        yOffset += lineHeight;
                     });
+                    yOffset += 1.5;
                 });
             });
 
@@ -783,9 +794,9 @@ document.addEventListener('DOMContentLoaded', function() {
         doc.rect(0, pageHeight - margin - footerHeight, pageWidth, footerHeight, 'F');
 
         doc.setTextColor(255);
-        doc.setFontSize(6);
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
-        doc.text('Generado por Aplicación de Arreglo de Exhibidores', pageWidth / 2, pageHeight - margin - footerHeight / 2 + 2, { align: 'center' });
+        doc.text('Generado por Aplicación de Arreglo de Exhibidores', pageWidth / 2, pageHeight - margin - footerHeight / 2 + 2.5, { align: 'center' });
 
         const fileName = `Arreglo Exhibidor ${currentArrangement.locationName.replace(/\s+/g, '')} ${currentArrangement.startDate.replace(/-/g, '')}.pdf`;
         doc.save(fileName);
